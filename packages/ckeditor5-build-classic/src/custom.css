@@ -1,0 +1,22 @@
+:root {
+  --ck-border-radius: 0px;
+  --ck-focus-ring: 0px;
+  --ck-color-shadow-inner: none;
+  --ck-color-toolbar-border: #eee;
+  --ck-color-link-default: #ed624b;
+}
+
+.ck.ck-editor__editable {
+  border: 0;
+}
+
+.ck.ck-toolbar {
+  border: 0;
+  border-top: 1px solid var(--ck-color-toolbar-border);
+}
+
+/* Overrides */
+
+.ck-content a {
+  color: #ed624b !important;
+}
