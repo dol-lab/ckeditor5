@@ -7,9 +7,7 @@
  * @module core/plugincollection
  */
 
-/* globals console */
-
-import CKEditorError, { attachLinkToDocumentation } from '@ckeditor/ckeditor5-utils/src/ckeditorerror';
+import CKEditorError, { logError } from '@ckeditor/ckeditor5-utils/src/ckeditorerror';
 
 import EmitterMixin from '@ckeditor/ckeditor5-utils/src/emittermixin';
 import mix from '@ckeditor/ckeditor5-utils/src/mix';
@@ -23,11 +21,11 @@ export default class PluginCollection {
 	/**
 	 * Creates an instance of the plugin collection class.
 	 * Allows loading and initializing plugins and their dependencies.
-	 * Allows to provide a list of already loaded plugins. These plugins will not be destroyed along with this collection.
+	 * Allows providing a list of already loaded plugins. These plugins will not be destroyed along with this collection.
 	 *
 	 * @param {module:core/editor/editor~Editor|module:core/context~Context} context
 	 * @param {Array.<Function>} [availablePlugins] Plugins (constructors) which the collection will be able to use
-	 * when {@link module:core/plugincollection~PluginCollection#init} is used with plugin names (strings, instead of constructors).
+	 * when {@link module:core/plugincollection~PluginCollection#init} is used with the plugin names (strings, instead of constructors).
 	 * Usually, the editor will pass its built-in plugins to the collection so they can later be
 	 * used in `config.plugins` or `config.removePlugins` by names.
 	 * @param {Iterable.<Array>} contextPlugins A list of already initialized plugins represented by a
@@ -107,8 +105,8 @@ export default class PluginCollection {
 	 *			} );
 	 *		}
 	 *
-	 * **Note**: This method will throw error if plugin is not loaded. Use `{@link #has editor.plugins.has()}`
-	 * to check if plugin is available.
+	 * **Note**: This method will throw an error if a plugin is not loaded. Use `{@link #has editor.plugins.has()}`
+	 * to check if a plugin is available.
 	 *
 	 * @param {Function|String} key The plugin constructor or {@link module:core/plugin~PluginInterface.pluginName name}.
 	 * @returns {module:core/plugin~PluginInterface}
@@ -117,6 +115,12 @@ export default class PluginCollection {
 		const plugin = this._plugins.get( key );
 
 		if ( !plugin ) {
+			let pluginName = key;
+
+			if ( typeof key == 'function' ) {
+				pluginName = key.pluginName || key.name;
+			}
+
 			/**
 			 * The plugin is not loaded and could not be obtained.
 			 *
@@ -126,20 +130,12 @@ export default class PluginCollection {
 			 * property.
 			 *
 			 * **Note**: You can use `{@link module:core/plugincollection~PluginCollection#has editor.plugins.has()}`
-			 * to check if plugin was loaded.
+			 * to check if a plugin was loaded.
 			 *
 			 * @error plugincollection-plugin-not-loaded
 			 * @param {String} plugin The name of the plugin which is not loaded.
 			 */
-			const errorMsg = 'plugincollection-plugin-not-loaded: The requested plugin is not loaded.';
-
-			let pluginName = key;
-
-			if ( typeof key == 'function' ) {
-				pluginName = key.pluginName || key.name;
-			}
-
-			throw new CKEditorError( errorMsg, this._context, { plugin: pluginName } );
+			throw new CKEditorError( 'plugincollection-plugin-not-loaded', this._context, { plugin: pluginName } );
 		}
 
 		return plugin;
@@ -169,7 +165,7 @@ export default class PluginCollection {
 	 * @param {Array.<Function|String>} plugins An array of {@link module:core/plugin~PluginInterface plugin constructors}
 	 * or {@link module:core/plugin~PluginInterface.pluginName plugin names}. The second option (names) works only if
 	 * `availablePlugins` were passed to the {@link #constructor}.
-	 * @param {Array.<String|Function>} [removePlugins] Names of plugins or plugin constructors
+	 * @param {Array.<String|Function>} [removePlugins] Names of the plugins or plugin constructors
 	 * that should not be loaded (despite being specified in the `plugins` array).
 	 * @returns {Promise.<module:core/plugin~LoadedPlugins>} A promise which gets resolved once all plugins are loaded
 	 * and available in the collection.
@@ -200,18 +196,18 @@ export default class PluginCollection {
 			 * **If you see this warning when using one of the editor creators directly** (not a build), then it means
 			 * that you tried loading plugins by name. However, unlike CKEditor 4, CKEditor 5 does not implement a "plugin loader".
 			 * This means that CKEditor 5 does not know where to load the plugin modules from. Therefore, you need to
-			 * provide each plugin through reference (as a constructor function). Check out the examples in
+			 * provide each plugin through a reference (as a constructor function). Check out the examples in
 			 * {@glink builds/guides/integration/advanced-setup#scenario-2-building-from-source "Building from source"}.
 			 *
 			 * @error plugincollection-plugin-not-found
 			 * @param {Array.<String>} plugins The name of the plugins which could not be loaded.
 			 */
-			const errorMsg = 'plugincollection-plugin-not-found: Some plugins are not available and could not be loaded.';
+			const errorId = 'plugincollection-plugin-not-found';
 
-			// Log the error so it's more visible on the console. Hopefully, for better DX.
-			console.error( attachLinkToDocumentation( errorMsg ), { plugins: missingPlugins } );
+			// Log the error, so it's more visible on the console. Hopefully, for a better DX.
+			logError( errorId, { plugins: missingPlugins } );
 
-			return Promise.reject( new CKEditorError( errorMsg, context, { plugins: missingPlugins } ) );
+			return Promise.reject( new CKEditorError( errorId, context, { plugins: missingPlugins } ) );
 		}
 
 		return Promise.all( pluginConstructors.map( loadPlugin ) )
@@ -234,10 +230,10 @@ export default class PluginCollection {
 					/**
 					 * It was not possible to load the plugin.
 					 *
-					 * This is a generic error logged to the console when a JavaSript error is thrown during the initialization
+					 * This is a generic error logged to the console when a JavaScript error is thrown during the initialization
 					 * of one of the plugins.
 					 *
-					 * If you correctly handled the promise returned by the editor's `create()` method (like shown below),
+					 * If you correctly handled the promise returned by the editor's `create()` method (as shown below),
 					 * you will find the original error logged to the console, too:
 					 *
 					 *		ClassicEditor.create( document.getElementById( 'editor' ) )
@@ -251,9 +247,7 @@ export default class PluginCollection {
 					 * @error plugincollection-load
 					 * @param {String} plugin The name of the plugin that could not be loaded.
 					 */
-					console.error( attachLinkToDocumentation(
-						'plugincollection-load: It was not possible to load the plugin.'
-					), { plugin: PluginConstructor } );
+					logError( 'plugincollection-load', { plugin: PluginConstructor } );
 
 					throw err;
 				} );
@@ -295,7 +289,7 @@ export default class PluginCollection {
 							 * @param {String} requiredBy The name of the parent plugin.
 							 */
 							throw new CKEditorError(
-								'plugincollection-context-required: Context plugin can not require plugin which is not a context plugin',
+								'plugincollection-context-required',
 								null,
 								{ plugin: RequiredPluginConstructor.name, requiredBy: PluginConstructor.name }
 							);
@@ -310,8 +304,7 @@ export default class PluginCollection {
 							 * @param {String} requiredBy The name of the parent plugin.
 							 */
 							throw new CKEditorError(
-								'plugincollection-required: Cannot load a plugin because one of its dependencies is listed in' +
-								'the `removePlugins` option.',
+								'plugincollection-required',
 								context,
 								{ plugin: RequiredPluginConstructor.name, requiredBy: PluginConstructor.name }
 							);
@@ -405,11 +398,11 @@ export default class PluginCollection {
 			 * The second option is that your `node_modules/` directory contains duplicated versions of the same
 			 * CKEditor 5 packages. Normally, on clean installations, npm deduplicates packages in `node_modules/`, so
 			 * it may be enough to call `rm -rf node_modules && npm i`. However, if you installed conflicting versions
-			 * of packages, their dependencies may need to be installed in more than one version which may lead to this
+			 * of some packages, their dependencies may need to be installed in more than one version which may lead to this
 			 * warning.
 			 *
 			 * Technically speaking, this error occurs because after adding a plugin to an existing editor build
-			 * dependencies of this plugin are being duplicated.
+			 * the dependencies of this plugin are being duplicated.
 			 * They are already built into that editor build and now get added for the second time as dependencies
 			 * of the plugin you are installing.
 			 *
@@ -421,7 +414,7 @@ export default class PluginCollection {
 			 * @param {Function} plugin2 The second plugin constructor.
 			 */
 			throw new CKEditorError(
-				'plugincollection-plugin-name-conflict: Two plugins with the same name were loaded.',
+				'plugincollection-plugin-name-conflict',
 				null,
 				{ pluginName, plugin1: this._plugins.get( pluginName ).constructor, plugin2: PluginConstructor }
 			);

@@ -66,19 +66,19 @@ describe( 'MentionUI', () => {
 	describe( 'init()', () => {
 		it( 'should throw if marker was not provided for feed', () => {
 			return createClassicTestEditor( { feeds: [ { feed: [ 'a' ] } ] } ).catch( error => {
-				assertCKEditorError( error, /mentionconfig-incorrect-marker/, null );
+				assertCKEditorError( error, /mentionconfig-incorrect-marker/, null, { marker: undefined } );
 			} );
 		} );
 
 		it( 'should throw if marker is empty string', () => {
 			return createClassicTestEditor( { feeds: [ { marker: '', feed: [ 'a' ] } ] } ).catch( error => {
-				assertCKEditorError( error, /mentionconfig-incorrect-marker/, null );
+				assertCKEditorError( error, /mentionconfig-incorrect-marker/, null, { marker: '' } );
 			} );
 		} );
 
 		it( 'should throw if marker is longer then 1 character', () => {
 			return createClassicTestEditor( { feeds: [ { marker: '$$', feed: [ 'a' ] } ] } ).catch( error => {
-				assertCKEditorError( error, /mentionconfig-incorrect-marker/, null );
+				assertCKEditorError( error, /mentionconfig-incorrect-marker/, null, { marker: '$$' } );
 			} );
 		} );
 	} );
@@ -1249,7 +1249,12 @@ describe( 'MentionUI', () => {
 						expect( panelView.isVisible, 'panel is hidden' ).to.be.false;
 						expect( editor.model.markers.has( 'mention' ), 'there is no marker' ).to.be.false;
 
-						sinon.assert.calledWithExactly( warnSpy, sinon.match( /^mention-feed-callback-error:/ ) );
+						sinon.assert.calledWithExactly(
+							warnSpy,
+							sinon.match( /^mention-feed-callback-error/ ),
+							sinon.match( { marker: '#' } ),
+							sinon.match.string // Link to the documentation
+						);
 						sinon.assert.calledOnce( eventSpy );
 					} );
 			} );
@@ -1572,8 +1577,30 @@ describe( 'MentionUI', () => {
 				testExecuteKey( 'enter', keyCodes.enter, feedItems );
 
 				testExecuteKey( 'tab', keyCodes.tab, feedItems );
+			} );
 
-				testExecuteKey( 'space', keyCodes.space, feedItems );
+			describe( 'on other keys', () => {
+				it( 'should do nothing on space', async () => {
+					setData( model, '<paragraph>foo []</paragraph>' );
+
+					model.change( writer => {
+						writer.insertText( '@', doc.selection.getFirstPosition() );
+					} );
+
+					const command = editor.commands.get( 'mention' );
+					const spy = testUtils.sinon.spy( command, 'execute' );
+
+					await waitForDebounce();
+					expectChildViewsIsOnState( [ true, false, false, false, false ] );
+
+					fireKeyDownEvent( {
+						keyCodes: keyCodes.space,
+						preventDefault: sinon.spy(),
+						stopPropagation: sinon.spy()
+					} );
+
+					sinon.assert.notCalled( spy );
+				} );
 			} );
 		} );
 
@@ -1724,8 +1751,6 @@ describe( 'MentionUI', () => {
 					testExecuteKey( 'enter', keyCodes.enter, issues );
 
 					testExecuteKey( 'tab', keyCodes.tab, issues );
-
-					testExecuteKey( 'space', keyCodes.space, issues );
 				} );
 			} );
 		} );
@@ -1849,8 +1874,6 @@ describe( 'MentionUI', () => {
 					testExecuteKey( 'enter', keyCodes.enter, issues );
 
 					testExecuteKey( 'tab', keyCodes.tab, issues );
-
-					testExecuteKey( 'space', keyCodes.space, issues );
 				} );
 
 				describe( 'mouse', () => {
