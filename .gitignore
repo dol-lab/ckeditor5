@@ -1,6 +1,6 @@
 .DS_Store
 
-ode_modules/
+node_modules/
 build/
 coverage/
 packages/*/node_modules/
